@@ -1,0 +1,20 @@
+# Backtest output
+backtests/
+
+# Generated submissions
+submissions/
+
+# Python
+__pycache__/
+*.py[codz]
+*.egg-info/
+build/
+dist/
+
+# Research output
+research/plots/
+
+# Environments
+.env
+.venv
+venv/
