@@ -1,6 +1,8 @@
 # IMC Prosperity 4 Toolkit
 
-Shared infrastructure for IMC Prosperity 4. Backtester, research tools, and data.
+Shared infrastructure for IMC Prosperity 4, built and maintained by [Project Paradise](https://project-paradise.co.uk) — a student community working on mathematical modelling competitions and projects together.
+
+This toolkit is open for everyone to use, modify, and share. If you're interested in quant, ML or mathematical modelling more broadly and want to learn by building things with others, [come join the community](https://project-paradise.co.uk).
 
 ## Setup
 
@@ -54,14 +56,3 @@ python3 backtester/parse_submission_logs.py path/to/log.log <round> <day>
 ## Writing a strategy
 
 Copy `strategies/example.py` and implement your `Trader.run()` method. The logger in `strategies/logger.py` is automatically inlined by `submit.sh`.
-
-## Project structure
-
-```
-backtester/          # Adapted jmerle backtester (execution engine)
-strategies/          # Example strategy + logger
-research/            # Visualization and analysis tools
-data/round0/         # Market data CSVs
-backtest.sh          # Quick backtest runner
-submit.sh            # Bundle strategy for upload
-```
