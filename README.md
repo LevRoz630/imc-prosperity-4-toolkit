@@ -2,7 +2,7 @@
 
 Shared infrastructure for IMC Prosperity 4, built and maintained by [Project Paradise](https://project-paradise.co.uk) — a student community working on mathematical modelling competitions and projects together.
 
-This toolkit is open for everyone to use, modify, and share. If you're interested in quant, ML or mathematical modelling more broadly and want to learn by building things with others, [come join the community](https://project-paradise.co.uk).
+This toolkit is open for everyone to use, modify, and share. If you're interested in quant, ML or mathematical modelling more broadly and want to learn by building things with others, [come join the community](https://project-paradise.co.uk/join/).
 
 ## Setup
 
