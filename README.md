@@ -1,4 +1,4 @@
-# IMC Prosperity 4 Toolkit
+# Project Paradise IMC Prosperity 4 Toolkit
 
 Shared infrastructure for IMC Prosperity 4, built and maintained by [Project Paradise](https://project-paradise.co.uk) — a student community working on mathematical modelling competitions and projects together.
 
