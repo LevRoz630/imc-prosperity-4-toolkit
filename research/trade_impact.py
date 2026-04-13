@@ -11,6 +11,9 @@ import numpy as np
 from data_finder import find_data_files
 
 HORIZONS = [1, 5, 10, 20]
+LOCATION_BINS = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+LOCATION_LABELS = ["0.0-0.2", "0.2-0.4", "0.4-0.6", "0.6-0.8", "0.8-1.0"]
+SIG_THRESHOLD = 1.65
 
 
 def compute_impacts(product_prices, product_trades):
@@ -55,31 +58,47 @@ def compute_impacts(product_prices, product_trades):
     return pd.DataFrame(results)
 
 
+def _fmt_impact(mean_val, se_val, n):
+    if n < 2 or se_val == 0:
+        marker = " "
+    elif abs(mean_val / se_val) >= SIG_THRESHOLD:
+        marker = "*"
+    else:
+        marker = " "
+    return f"{mean_val:>+7.2f}{marker}"
+
+
+def _print_group(label, subset, label_width=8):
+    n = len(subset)
+    print(f"{label:>{label_width}} {n:>5}", end="")
+    for h in HORIZONS:
+        col = f"impact_{h}"
+        vals = subset[col].dropna()
+        if len(vals) == 0:
+            print(f" {'n/a':>8}", end="")
+            continue
+        mean_val = vals.mean()
+        se_val = vals.std() / np.sqrt(len(vals)) if len(vals) > 1 else 0
+        print(f" {_fmt_impact(mean_val, se_val, len(vals))}", end="")
+    print()
+
+
 def print_impact_by_quantity(impacts, product):
     print(f"\n{'='*60}")
     print(f"  {product} — Impact by Trade Size")
     print(f"{'='*60}")
-    print(f"{'Qty':>5} {'Count':>6}", end="")
+    print(f"{'Qty':>8} {'Count':>5}", end="")
     for h in HORIZONS:
         print(f" {'t+'+str(h):>8}", end="")
     print()
-    print("-" * 50)
+    print("-" * 55)
 
     for qty in sorted(impacts["quantity"].unique()):
         subset = impacts[impacts["quantity"] == qty]
-        print(f"{qty:>5} {len(subset):>6}", end="")
-        for h in HORIZONS:
-            col = f"impact_{h}"
-            mean_val = subset[col].mean()
-            print(f" {mean_val:>+8.2f}", end="")
-        print()
+        _print_group(str(int(qty)), subset)
 
-    total = impacts
-    print("-" * 50)
-    print(f"{'ALL':>5} {len(total):>6}", end="")
-    for h in HORIZONS:
-        print(f" {total[f'impact_{h}'].mean():>+8.2f}", end="")
-    print()
+    print("-" * 55)
+    _print_group("ALL", impacts)
 
 
 def print_impact_by_location(impacts, product):
@@ -88,24 +107,62 @@ def print_impact_by_location(impacts, product):
     print(f"  (0.0 = running low, 1.0 = running high)")
     print(f"{'='*60}")
 
-    bins = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
-    labels = ["0.0-0.2", "0.2-0.4", "0.4-0.6", "0.6-0.8", "0.8-1.0"]
-    impacts["loc_bin"] = pd.cut(impacts["price_location"], bins=bins, labels=labels, include_lowest=True)
+    impacts = impacts.copy()
+    impacts["loc_bin"] = pd.cut(
+        impacts["price_location"], bins=LOCATION_BINS,
+        labels=LOCATION_LABELS, include_lowest=True,
+    )
 
-    print(f"{'Loc':>8} {'Count':>6}", end="")
+    print(f"{'Loc':>8} {'Count':>5}", end="")
     for h in HORIZONS:
         print(f" {'t+'+str(h):>8}", end="")
     print()
     print("-" * 55)
 
-    for label in labels:
+    for label in LOCATION_LABELS:
         subset = impacts[impacts["loc_bin"] == label]
         if len(subset) == 0:
             continue
-        print(f"{label:>8} {len(subset):>6}", end="")
-        for h in HORIZONS:
-            mean_val = subset[f"impact_{h}"].mean()
-            print(f" {mean_val:>+8.2f}", end="")
+        _print_group(label, subset)
+
+
+def print_impact_crosstab(impacts, product):
+    print(f"\n{'='*60}")
+    print(f"  {product} — Quantity x Location (t+20 impact)")
+    print(f"  (* = significant at 90%)")
+    print(f"{'='*60}")
+
+    impacts = impacts.copy()
+    impacts["loc_bin"] = pd.cut(
+        impacts["price_location"], bins=LOCATION_BINS,
+        labels=LOCATION_LABELS, include_lowest=True,
+    )
+
+    quantities = sorted(impacts["quantity"].unique())
+    active_locs = [l for l in LOCATION_LABELS
+                   if len(impacts[impacts["loc_bin"] == l]) > 0]
+
+    print(f"{'Qty':>5}", end="")
+    for loc in active_locs:
+        print(f" {loc:>12}", end="")
+    print()
+    print("-" * (5 + 13 * len(active_locs)))
+
+    for qty in quantities:
+        print(f"{int(qty):>5}", end="")
+        for loc in active_locs:
+            cell = impacts[(impacts["quantity"] == qty) & (impacts["loc_bin"] == loc)]
+            if len(cell) == 0:
+                print(f" {'---':>12}", end="")
+                continue
+            vals = cell["impact_20"].dropna()
+            if len(vals) == 0:
+                print(f" {'---':>12}", end="")
+                continue
+            mean_val = vals.mean()
+            se_val = vals.std() / np.sqrt(len(vals)) if len(vals) > 1 else 0
+            sig = "*" if len(vals) > 1 and se_val > 0 and abs(mean_val / se_val) >= SIG_THRESHOLD else " "
+            print(f" {mean_val:>+7.2f}{sig}({len(vals):>2})", end="")
         print()
 
 
@@ -124,6 +181,7 @@ def main():
     day_label = str(prices["day"].iloc[0])
     print(f"Trade Impact Analysis — Day {day_label}")
 
+    all_impacts = {}
     for product in prices["product"].unique():
         product_prices = prices[prices["product"] == product].sort_values("timestamp")
         product_trades = trades[trades["symbol"] == product].sort_values("timestamp")
@@ -131,8 +189,10 @@ def main():
             continue
 
         impacts = compute_impacts(product_prices, product_trades)
+        all_impacts[product] = impacts
         print_impact_by_quantity(impacts, product)
         print_impact_by_location(impacts, product)
+        print_impact_crosstab(impacts, product)
 
 
 if __name__ == "__main__":
